@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio de Marcos Animados Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js"></script>
+</head>
+<body class="bg-[#0D214F] text-slate-100 font-sans min-h-screen flex flex-col items-center justify-center p-4">
+
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-extrabold text-[#F2B705] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+            Studio de Marcos Animados Pro
+        </h1>
+        <p class="text-xs text-slate-300 mt-1 font-medium">Renderizado ágil sin transparencias y con proporciones fijas automáticas.</p>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-6 items-center justify-center max-w-5xl w-full">
+        
+        <div class="flex flex-col items-center">
+            <div id="canvas-container" class="relative bg-[#081430] rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(242,183,5,0.15)] border-2 border-[#F2B705]/40 cursor-move w-[350px] h-[350px] md:w-[450px] md:h-[450px] select-none" style="touch-action: none;">
+                <canvas id="mainCanvas" width="450" height="450" class="w-full h-full object-contain"></canvas>
+                <video id="frameVideo" src="marco1.webm" autoplay loop muted playsinline crossorigin="anonymous" class="absolute pointer-events-none opacity-0 w-1 h-1"></video>
+            </div>
+            <span class="text-xs text-slate-400 mt-2 bg-[#081430]/60 px-3 py-1 rounded-full border border-slate-700">💡 Arrastra el elemento activo dentro del recuadro para reubicarlo</span>
+        </div>
+
+        <div class="flex flex-col w-full max-w-md bg-[#132A60] p-5 rounded-2xl border border-[#F2B705]/30 shadow-2xl space-y-4">
+            
+            <div>
+                <h3 class="text-xs font-bold text-[#F2B705] uppercase tracking-wider mb-2">1. Seleccionar Diseño de Marco</h3>
+                <div id="gallery-container" class="grid grid-cols-3 gap-2 bg-[#081430] p-2 rounded-xl border border-slate-700"></div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-bold text-[#F2B705] uppercase tracking-wider mb-2">2. Cargar tu Imagen</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="file" accept="image/*" id="file-upload" class="hidden">
+                    <label for="file-upload" class="flex items-center justify-center bg-[#F2B705] hover:bg-[#D9A304] text-[#0D214F] font-bold py-2 px-4 rounded-xl cursor-pointer transition text-center shadow-md text-xs uppercase tracking-wide">
+                        Subir Foto
+                    </label>
+                    <button id="btn-camera" class="bg-[#081430] hover:bg-[#0c1d45] text-slate-200 font-bold py-2 px-4 rounded-xl transition shadow-md border border-slate-600 text-xs uppercase tracking-wide">
+                        Tomar Foto 📸
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-bold text-[#F2B705] uppercase tracking-wider mb-2">3. Elemento Activo para Editar</h3>
+                <div class="grid grid-cols-2 gap-2 bg-[#081430] p-1 rounded-xl border border-slate-700">
+                    <button id="mode-photo" class="py-1.5 px-3 rounded-lg text-[11px] font-bold transition bg-[#F2B705] text-[#0D214F] uppercase tracking-wider">
+                        Editar Foto 👤
+                    </button>
+                    <button id="mode-frame" class="py-1.5 px-3 rounded-lg text-[11px] font-bold transition text-slate-400 hover:text-slate-200 uppercase tracking-wider">
+                        Editar Marco 🖼️
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div id="zoom-photo-container">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">4A. Zoom (Foto)</h4>
+                        <span id="zoom-photo-value" class="text-xs bg-[#081430] px-2 py-0.5 rounded font-bold text-[#F2B705]">100%</span>
+                    </div>
+                    <input type="range" id="zoom-photo-range" min="0.2" max="3" step="0.02" value="1" class="w-full accent-[#F2B705] bg-[#081430] h-2 rounded-lg cursor-pointer">
+                </div>
+
+                <div id="zoom-frame-container" class="opacity-40 pointer-events-none transition-opacity">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">4B. Zoom (Marco Animado)</h4>
+                        <span id="zoom-frame-value" class="text-xs bg-[#081430] px-2 py-0.5 rounded font-bold text-[#F2B705]">100%</span>
+                    </div>
+                    <input type="range" id="zoom-frame-range" min="0.2" max="3" step="0.02" value="1" class="w-full accent-[#F2B705] bg-[#081430] h-2 rounded-lg cursor-pointer">
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-700 grid grid-cols-2 gap-3">
+                <button id="btn-generate-video" class="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-xl transition transform active:scale-95 bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+                    Generar Video (.WEBM)
+                </button>
+                <button id="btn-generate-gif" class="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-xl transition transform active:scale-95 bg-gradient-to-r from-[#F2B705] to-[#D9A304] text-[#0D214F]">
+                    Generar Animación (.GIF)
+                </button>
+            </div>
+
+            <div id="status-loading" class="text-center text-xs text-[#F2B705] font-bold uppercase tracking-wider hidden animate-pulse py-2">
+                Procesando composición rápida, por favor espera...
+            </div>
+
+            <div id="result-box" class="p-3 bg-[#081430] rounded-xl border-2 border-emerald-500 flex flex-col space-y-2 hidden">
+                <p id="result-title" class="text-xs text-emerald-400 font-bold uppercase tracking-wide">✓ ¡Archivo Listo!</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <a id="btn-download" href="#" download="mi-creacion.webm" class="bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold py-2 rounded-lg transition text-xs uppercase tracking-wide">
+                        Descargar
+                    </a>
+                    <button id="btn-share" class="bg-[#132A60] hover:bg-[#1c3a80] text-[#F2B705] font-bold py-2 rounded-lg transition text-xs border border-[#F2B705]/50 uppercase tracking-wide">
+                        Compartir 🔗
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de los recursos de marcos locales
+        const LISTA_DE_MARCOS = [
+            { id: "marco1", nombre: "Diseño 1 Neon", archivo: "marco1.webm" },
+            { id: "marco2", nombre: "Diseño 2 Fuego", archivo: "marco2.webm" },
+            { id: "marco3", nombre: "Diseño 3 Cyber", archivo: "marco3.webm" }
+        ];
+
+        // Elementos de la interfaz y Canvas
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('frameVideo');
+        const fileUpload = document.getElementById('file-upload');
+        const galleryContainer = document.getElementById('gallery-container');
+        
+        const zoomPhotoRange = document.getElementById('zoom-photo-range');
+        const zoomPhotoValue = document.getElementById('zoom-photo-value');
+        const zoomFrameRange = document.getElementById('zoom-frame-range');
+        const zoomFrameValue = document.getElementById('zoom-frame-value');
+        
+        const zoomPhotoCont = document.getElementById('zoom-photo-container');
+        const zoomFrameCont = document.getElementById('zoom-frame-container');
+        const container = document.getElementById('canvas-container');
+        const btnCamera = document.getElementById('btn-camera');
+        const btnGenVideo = document.getElementById('btn-generate-video');
+        const btnGenGif = document.getElementById('btn-generate-gif');
+        const statusLoading = document.getElementById('status-loading');
+        const resultBox = document.getElementById('result-box');
+        const btnDownload = document.getElementById('btn-download');
+        const btnShare = document.getElementById('btn-share');
+        const resultTitle = document.getElementById('result-title');
+
+        const modePhotoBtn = document.getElementById('mode-photo');
+        const modeFrameBtn = document.getElementById('mode-frame');
+
+        // Variables de estado lógicas
+        let userImg = new Image();
+        let imgLoaded = false;
+        
+        let zoomPhoto = 1;
+        let photoPos = { x: 0, y: 0 };
+        let photoRenderSize = { w: 0, h: 0 }; // Proporción calculada de la foto
+
+        let zoomFrame = 1;
+        let framePos = { x: 0, y: 0 };
+        let frameRenderSize = { w: 0, h: 0 }; // Proporción calculada del marco
+
+        let currentMode = 'photo'; 
+        let activosPointers = [];
+        let centroInicialDrag = { x: 0, y: 0 };
+        let recordedChunks = [];
+
+        // Inicializador dinámico de galería de marcos
+        function inicializarGaleria() {
+            galleryContainer.innerHTML = "";
+            LISTA_DE_MARCOS.forEach((marco, index) => {
+                const boton = document.createElement('button');
+                boton.innerText = marco.nombre;
+                boton.className = `p-2 text-[11px] font-bold rounded-lg border transition ${
+                    index === 0 
+                    ? 'bg-[#F2B705] border-[#F2B705] text-[#0D214F] font-black' 
+                    : 'bg-[#081430] border-slate-700 text-slate-400 hover:text-slate-200'
+                }`;
+                
+                boton.addEventListener('click', () => {
+                    Array.from(galleryContainer.children).forEach(b => {
+                        b.className = "p-2 text-[11px] font-bold rounded-lg border bg-[#081430] border-slate-700 text-slate-400 hover:text-slate-200";
+                    });
+                    boton.className = "p-2 text-[11px] font-black rounded-lg border bg-[#F2B705] border-[#F2B705] text-[#0D214F]";
+                    
+                    video.src = marco.archivo;
+                    video.load();
+                });
+                galleryContainer.appendChild(boton);
+            });
+        }
+        inicializarGaleria();
+
+        // Control de relación de aspecto proporcional del Marco (Video)
+        video.addEventListener('loadedmetadata', () => {
+            const canvasRatio = canvas.width / canvas.height;
+            const videoRatio = video.videoWidth / video.videoHeight;
+
+            if (videoRatio > canvasRatio) {
+                frameRenderSize.h = canvas.height;
+                frameRenderSize.w = canvas.height * videoRatio;
+            } else {
+                frameRenderSize.w = canvas.width;
+                frameRenderSize.h = canvas.width / videoRatio;
+            }
+            video.play().catch(() => {});
+        });
+
+        // Control de relación de aspecto proporcional de la Foto (Usuario)
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    userImg = new Image();
+                    userImg.onload = () => { 
+                        imgLoaded = true; 
+                        photoPos = { x: 0, y: 0 }; 
+                        zoomPhoto = 1; 
+                        
+                        const imgRatio = userImg.width / userImg.height;
+                        const canvasRatio = canvas.width / canvas.height;
+
+                        if (imgRatio > canvasRatio) {
+                            photoRenderSize.w = canvas.width;
+                            photoRenderSize.h = canvas.width / imgRatio;
+                        } else {
+                            photoRenderSize.h = canvas.height;
+                            photoRenderSize.w = canvas.height * imgRatio;
+                        }
+
+                        zoomPhotoRange.value = 1;
+                        zoomPhotoValue.innerText = "100%";
+                    };
+                    userImg.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Conmutadores de Capas (Foto vs Marco)
+        modePhotoBtn.addEventListener('click', () => {
+            currentMode = 'photo';
+            modePhotoBtn.className = "py-1.5 px-3 rounded-lg text-[11px] font-bold transition bg-[#F2B705] text-[#0D214F] uppercase tracking-wider";
+            modeFrameBtn.className = "py-1.5 px-3 rounded-lg text-[11px] font-bold transition text-slate-400 hover:text-slate-200 uppercase tracking-wider";
+            zoomPhotoCont.classList.remove('opacity-40', 'pointer-events-none');
+            zoomFrameCont.classList.add('opacity-40', 'pointer-events-none');
+        });
+
+        modeFrameBtn.addEventListener('click', () => {
+            currentMode = 'frame';
+            modeFrameBtn.className = "py-1.5 px-3 rounded-lg text-[11px] font-bold transition bg-[#F2B705] text-[#0D214F] uppercase tracking-wider";
+            modePhotoBtn.className = "py-1.5 px-3 rounded-lg text-[11px] font-bold transition text-slate-400 hover:text-slate-200 uppercase tracking-wider";
+            zoomFrameCont.classList.remove('opacity-40', 'pointer-events-none');
+            zoomPhotoCont.classList.add('opacity-40', 'pointer-events-none');
+        });
+
+        // Vinculación de Sliders de Control
+        zoomPhotoRange.addEventListener('input', (e) => {
+            zoomPhoto = parseFloat(e.target.value);
+            zoomPhotoValue.innerText = Math.round(zoomPhoto * 100) + "%";
+        });
+
+        zoomFrameRange.addEventListener('input', (e) => {
+            zoomFrame = parseFloat(e.target.value);
+            zoomFrameValue.innerText = Math.round(zoomFrame * 100) + "%";
+        });
+
+        // Sistema de captura de arrastres (PointerEvents unificados para Web y Móviles)
+        container.addEventListener('pointerdown', (e) => {
+            container.setPointerCapture(e.pointerId);
+            activosPointers.push(e);
+
+            if (activosPointers.length === 1) {
+                const posActual = currentMode === 'photo' ? photoPos : framePos;
+                centroInicialDrag = { x: e.clientX - posActual.x, y: e.clientY - posActual.y };
+            }
+        });
+
+        container.addEventListener('pointermove', (e) => {
+            const index = activosPointers.findIndex(p => p.pointerId === e.pointerId);
+            if (index === -1) return;
+            activosPointers[index] = e;
+
+            if (activosPointers.length === 1) {
+                if (currentMode === 'photo') {
+                    photoPos = { x: e.clientX - centroInicialDrag.x, y: e.clientY - centroInicialDrag.y };
+                } else {
+                    framePos = { x: e.clientX - centroInicialDrag.x, y: e.clientY - centroInicialDrag.y };
+                }
+            }
+        });
+
+        const finalizarPuntero = (e) => { activosPointers = activosPointers.filter(p => p.pointerId !== e.pointerId); };
+        container.addEventListener('pointerup', finalizarPuntero);
+        container.addEventListener('pointercancel', finalizarPuntero);
+
+        // Entrada nativa de cámara
+        btnCamera.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 450, height: 450 } });
+                const videoTrack = document.createElement('video');
+                videoTrack.srcObject = stream;
+                videoTrack.play();
+                setTimeout(() => {
+                    ctx.drawImage(videoTrack, 0, 0, 450, 450);
+                    userImg.src = canvas.toDataURL('image/jpeg');
+                    userImg.onload = () => { 
+                        imgLoaded = true; 
+                        photoRenderSize = { w: canvas.width, h: canvas.height };
+                    };
+                    stream.getTracks().forEach(track => track.stop());
+                }, 1200);
+            } catch (err) { alert("Cámara no disponible."); }
+        });
+
+        // 4. BUCLE DE RENDERIZADO PRINCIPAL (Optimizado, sin transparencias y centrado geométrico)
+        function draw() {
+            // Elimina transparencia rellenando el fondo con color plano antes de pintar capas
+            ctx.fillStyle = '#081430';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Render de Foto de Usuario Proporcional
+            if (imgLoaded) {
+                ctx.save();
+                ctx.translate(canvas.width / 2 + photoPos.x, canvas.height / 2 + photoPos.y);
+                ctx.scale(zoomPhoto, zoomPhoto);
+                ctx.drawImage(userImg, -photoRenderSize.w / 2, -photoRenderSize.h / 2, photoRenderSize.w, photoRenderSize.h);
+                ctx.restore();
+            }
+            
+            // Render de Marco de Video Proporcional
+            if (video.readyState >= 2 && frameRenderSize.w > 0) {
+                ctx.save();
+                ctx.translate(canvas.width / 2 + framePos.x, canvas.height / 2 + framePos.y);
+                ctx.scale(zoomFrame, zoomFrame);
+                ctx.drawImage(video, -frameRenderSize.w / 2, -frameRenderSize.h / 2, frameRenderSize.w, frameRenderSize.h);
+                ctx.restore();
+            }
+            
+            requestAnimationFrame(draw);
+        }
+        // Desbloqueo inicial por interacción para móviles
+        document.body.addEventListener('click', () => { video.play().catch(()=>{}); }, { once: true });
+        requestAnimationFrame(draw);
+
+        // COMPILADOR DE VIDEO ÁGIL (.WEBM)
+        btnGenVideo.addEventListener('click', () => {
+            setLoadingState(true);
+            recordedChunks = [];
+            const stream = canvas.captureStream(30);
+            
+            let opciones = { mimeType: 'video/webm; codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(opciones.mimeType)) opciones = { mimeType: 'video/webm' };
+
+            const mediaRecorder = new MediaRecorder(stream, opciones);
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                showResult(URL.createObjectURL(blob), 'mi-foto-animada.webm');
+            };
+            
+            mediaRecorder.start();
+            setTimeout(() => { mediaRecorder.stop(); }, 4000); // 4 segundos de grabación estables
+        });
+
+        // COMPILADOR DE ANIMACIÓN ULTRA RÁPIDA (.GIF por JPEG)
+        btnGenGif.addEventListener('click', () => {
+            setLoadingState(true);
+            const framesArray = [];
+            const fps = 10; 
+            const totalFrames = fps * 4; 
+            let currentFrameCount = 0;
+            
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = 300;
+            offscreenCanvas.height = 300;
+            const offscreenCtx = offscreenCanvas.getContext('2d');
+
+            const captureInterval = setInterval(() => {
+                offscreenCtx.fillStyle = '#081430'; // Asegura la base opaca para compresión JPEG
+                offscreenCtx.fillRect(0, 0, 300, 300);
+                offscreenCtx.drawImage(canvas, 0, 0, 300, 300);
+                
+                // Conversión veloz a JPEG plano
+                framesArray.push(offscreenCanvas.toDataURL('image/jpeg', 0.8));
+                currentFrameCount++;
+                
+                if (currentFrameCount >= totalFrames) {
+                    clearInterval(captureInterval);
+                    gifshot.createGIF({
+                        images: framesArray,
+                        gifWidth: 300, 
+                        gifHeight: 300,
+                        interval: 1 / fps,
+                        numFrames: totalFrames,
+                        sampleInterval: 10, // Salto alto de muestreo = compilación instantánea
+                        numWorkers: 2
+                    }, function (obj) {
+                        if (!obj.error) {
+                            showResult(obj.image, 'mi-foto-animada.gif');
+                        } else { 
+                            alert("Error en compilación rápida."); 
+                            setLoadingState(false); 
+                        }
+                    });
+                }
+            }, 1000 / fps);
+        });
+
+        function setLoadingState(loading) {
+            if (loading) {
+                statusLoading.classList.remove('hidden');
+                resultBox.classList.add('hidden');
+                btnGenVideo.disabled = true;
+                btnGenGif.disabled = true;
+            } else {
+                statusLoading.classList.add('hidden');
+                btnGenVideo.disabled = false;
+                btnGenGif.disabled = false;
+            }
+        }
+
+        function showResult(url, filename) {
+            setLoadingState(false);
+            btnDownload.href = url;
+            btnDownload.download = filename;
+            resultTitle.innerText = filename.endsWith('.gif') ? "✓ ¡Animación GIF Lista!" : "✓ ¡Video WEBM Listo!";
+            resultBox.classList.remove('hidden');
+        }
+
+        btnShare.addEventListener('click', async () => {
+            try {
+                const response = await fetch(btnDownload.href);
+                const blob = await response.blob(); 
+                const isGif = btnDownload.download.endsWith('.gif');
+                const file = new File([blob], btnDownload.download, { type: isGif ? "image/gif" : "video/webm" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: '¡Foto Animada!' });
+                } else { alert("Descárgalo directamente desde el botón verde."); }
+            } catch(e) { console.log(e); }
+        });
+    </script>
+</body>
+</html>
