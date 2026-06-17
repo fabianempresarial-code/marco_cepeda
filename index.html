@@ -144,11 +144,11 @@
         
         let zoomPhoto = 1;
         let photoPos = { x: 0, y: 0 };
-        let photoRenderSize = { w: 0, h: 0 }; // Proporción calculada de la foto
+        let photoRenderSize = { w: 0, h: 0 };
 
         let zoomFrame = 1;
         let framePos = { x: 0, y: 0 };
-        let frameRenderSize = { w: 0, h: 0 }; // Proporción calculada del marco
+        let frameRenderSize = { w: 0, h: 0 };
 
         let currentMode = 'photo'; 
         let activosPointers = [];
@@ -173,6 +173,10 @@
                     });
                     boton.className = "p-2 text-[11px] font-black rounded-lg border bg-[#F2B705] border-[#F2B705] text-[#0D214F]";
                     
+                    // Forzar recarga limpia sin bloqueos CORS
+                    video.removeAttribute('src');
+                    video.load();
+                    video.setAttribute('crossOrigin', 'anonymous');
                     video.src = marco.archivo;
                     video.load();
                 });
@@ -203,6 +207,7 @@
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     userImg = new Image();
+                    userImg.crossOrigin = "anonymous"; // Evita contaminar el canvas
                     userImg.onload = () => { 
                         imgLoaded = true; 
                         photoPos = { x: 0, y: 0 }; 
@@ -256,7 +261,7 @@
             zoomFrameValue.innerText = Math.round(zoomFrame * 100) + "%";
         });
 
-        // Sistema de captura de arrastres (PointerEvents unificados para Web y Móviles)
+        // Sistema unificado de arrastre táctil y mouse
         container.addEventListener('pointerdown', (e) => {
             container.setPointerCapture(e.pointerId);
             activosPointers.push(e);
@@ -285,7 +290,7 @@
         container.addEventListener('pointerup', finalizarPuntero);
         container.addEventListener('pointercancel', finalizarPuntero);
 
-        // Entrada nativa de cámara
+        // Captura directa desde cámara web/móvil
         btnCamera.addEventListener('click', async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 450, height: 450 } });
@@ -293,6 +298,8 @@
                 videoTrack.srcObject = stream;
                 videoTrack.play();
                 setTimeout(() => {
+                    ctx.fillStyle = '#081430';
+                    ctx.fillRect(0, 0, 450, 450);
                     ctx.drawImage(videoTrack, 0, 0, 450, 450);
                     userImg.src = canvas.toDataURL('image/jpeg');
                     userImg.onload = () => { 
@@ -301,40 +308,49 @@
                     };
                     stream.getTracks().forEach(track => track.stop());
                 }, 1200);
-            } catch (err) { alert("Cámara no disponible."); }
+            } catch (err) { alert("Cámara no disponible o denegada."); }
         });
 
-        // 4. BUCLE DE RENDERIZADO PRINCIPAL (Optimizado, sin transparencias y centrado geométrico)
-        function draw() {
-            // Elimina transparencia rellenando el fondo con color plano antes de pintar capas
-            ctx.fillStyle = '#081430';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // FUNCIÓN MAESTRA DE ESTAMPADO GRÁFICO (Fuerza fondo opaco sin transparencias)
+        function procesarEstampaFrame(targetCtx, targetWidth, targetHeight) {
+            // 1. Eliminar canal alfa rellenando con el fondo sólido de la app
+            targetCtx.fillStyle = '#081430';
+            targetCtx.fillRect(0, 0, targetWidth, targetHeight);
             
-            // Render de Foto de Usuario Proporcional
+            const scaleX = targetWidth / canvas.width;
+            const scaleY = targetHeight / canvas.height;
+
+            // 2. Pintar Foto de Usuario Centrada
             if (imgLoaded) {
-                ctx.save();
-                ctx.translate(canvas.width / 2 + photoPos.x, canvas.height / 2 + photoPos.y);
-                ctx.scale(zoomPhoto, zoomPhoto);
-                ctx.drawImage(userImg, -photoRenderSize.w / 2, -photoRenderSize.h / 2, photoRenderSize.w, photoRenderSize.h);
-                ctx.restore();
+                targetCtx.save();
+                targetCtx.translate(targetWidth / 2 + (photoPos.x * scaleX), targetHeight / 2 + (photoPos.y * scaleY));
+                targetCtx.scale(zoomPhoto * scaleX, zoomPhoto * scaleY);
+                targetCtx.drawImage(userImg, -photoRenderSize.w / 2, -photoRenderSize.h / 2, photoRenderSize.w, photoRenderSize.h);
+                targetCtx.restore();
             }
             
-            // Render de Marco de Video Proporcional
+            // 3. Pintar Marco Animado Centrado
             if (video.readyState >= 2 && frameRenderSize.w > 0) {
-                ctx.save();
-                ctx.translate(canvas.width / 2 + framePos.x, canvas.height / 2 + framePos.y);
-                ctx.scale(zoomFrame, zoomFrame);
-                ctx.drawImage(video, -frameRenderSize.w / 2, -frameRenderSize.h / 2, frameRenderSize.w, frameRenderSize.h);
-                ctx.restore();
+                targetCtx.save();
+                targetCtx.translate(targetWidth / 2 + (framePos.x * scaleX), targetHeight / 2 + (framePos.y * scaleY));
+                targetCtx.scale(zoomFrame * scaleX, zoomFrame * scaleY);
+                try {
+                    targetCtx.drawImage(video, -frameRenderSize.w / 2, -frameRenderSize.h / 2, frameRenderSize.w, frameRenderSize.h);
+                } catch(e) { console.log("Prevención activa de excepción CORS."); }
+                targetCtx.restore();
             }
-            
+        }
+
+        // Bucle continuo del canvas en pantalla a 60fps
+        function draw() {
+            procesarEstampaFrame(ctx, canvas.width, canvas.height);
             requestAnimationFrame(draw);
         }
-        // Desbloqueo inicial por interacción para móviles
+        // Desbloqueo de reproducción inicial por interacción (Obligatorio en móviles)
         document.body.addEventListener('click', () => { video.play().catch(()=>{}); }, { once: true });
         requestAnimationFrame(draw);
 
-        // COMPILADOR DE VIDEO ÁGIL (.WEBM)
+        // COMPILADOR DE VIDEO (.WEBM)
         btnGenVideo.addEventListener('click', () => {
             setLoadingState(true);
             recordedChunks = [];
@@ -351,16 +367,17 @@
             };
             
             mediaRecorder.start();
-            setTimeout(() => { mediaRecorder.stop(); }, 4000); // 4 segundos de grabación estables
+            setTimeout(() => { mediaRecorder.stop(); }, 4000); // Captura estable de 4 segundos
         });
 
-        // COMPILADOR DE ANIMACIÓN ULTRA RÁPIDA (.GIF por JPEG)
+        // COMPILADOR DE ANIMACIÓN (.GIF) - CORRECCIÓN DE SUBPROCESOS COMPATIBLE CON VERCEL
         btnGenGif.addEventListener('click', () => {
             setLoadingState(true);
             const framesArray = [];
             const fps = 10; 
-            const totalFrames = fps * 4; 
-            let currentFrameCount = 0;
+            const segundosDeGrabacion = 3;
+            const totalFrames = fps * segundosDeGrabacion; 
+            let fCount = 0;
             
             const offscreenCanvas = document.createElement('canvas');
             offscreenCanvas.width = 300;
@@ -368,29 +385,35 @@
             const offscreenCtx = offscreenCanvas.getContext('2d');
 
             const captureInterval = setInterval(() => {
-                offscreenCtx.fillStyle = '#081430'; // Asegura la base opaca para compresión JPEG
-                offscreenCtx.fillRect(0, 0, 300, 300);
-                offscreenCtx.drawImage(canvas, 0, 0, 300, 300);
+                try {
+                    // Estampado directo aislado del bucle principal
+                    procesarEstampaFrame(offscreenCtx, 300, 300);
+                    
+                    // Conversión veloz a JPEG comprimido (Muy ligero y rápido)
+                    framesArray.push(offscreenCanvas.toDataURL('image/jpeg', 0.6));
+                    fCount++;
+                } catch (error) {
+                    console.error("Error durante la captura de fotogramas:", error);
+                }
                 
-                // Conversión veloz a JPEG plano
-                framesArray.push(offscreenCanvas.toDataURL('image/jpeg', 0.8));
-                currentFrameCount++;
-                
-                if (currentFrameCount >= totalFrames) {
+                if (fCount >= totalFrames) {
                     clearInterval(captureInterval);
+                    
+                    // Forzar renderizado en hilo principal (numWorkers: 0) para esquivar bloqueos CORS de CDN
                     gifshot.createGIF({
                         images: framesArray,
                         gifWidth: 300, 
                         gifHeight: 300,
                         interval: 1 / fps,
                         numFrames: totalFrames,
-                        sampleInterval: 10, // Salto alto de muestreo = compilación instantánea
-                        numWorkers: 2
+                        sampleInterval: 10, 
+                        numWorkers: 0 // <-- Desactiva subprocesos incompatibles con scripts externos
                     }, function (obj) {
                         if (!obj.error) {
                             showResult(obj.image, 'mi-foto-animada.gif');
                         } else { 
-                            alert("Error en compilación rápida."); 
+                            console.error("Error interno de gifshot:", obj.error);
+                            alert("Error crítico en la compilación del GIF: " + obj.error); 
                             setLoadingState(false); 
                         }
                     });
@@ -426,8 +449,8 @@
                 const isGif = btnDownload.download.endsWith('.gif');
                 const file = new File([blob], btnDownload.download, { type: isGif ? "image/gif" : "video/webm" });
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: '¡Foto Animada!' });
-                } else { alert("Descárgalo directamente desde el botón verde."); }
+                    await navigator.share({ files: [file], title: '¡Mira mi foto animada!' });
+                } else { alert("Tu navegador no soporta compartir archivos. Usa el botón Descargar."); }
             } catch(e) { console.log(e); }
         });
     </script>
